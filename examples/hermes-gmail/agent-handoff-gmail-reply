@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Reply to one handoff email, then mark that source message processed."""
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+from agent_handoff_gmail import BridgeError, ENVELOPE_PREFIX, cli_json, error_json, save_processed
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--gmail-cli", default=os.environ.get("AGENT_HANDOFF_GMAIL_CLI"), help="Path to an approved Gmail CLI")
+    parser.add_argument("--account", default=os.environ.get("AGENT_HANDOFF_GMAIL_ACCOUNT", "personal"), help="Gmail CLI account name")
+    parser.add_argument("--message-id", required=True, help="Source Gmail message ID")
+    parser.add_argument("--result-json", required=True, help="JSON result envelope to send")
+    parser.add_argument("--state-file", required=True, type=Path, help="Private processed-message state path")
+    args = parser.parse_args()
+    if not args.gmail_cli:
+        print(error_json("missing_gmail_cli"), file=sys.stderr)
+        return 2
+    try:
+        result = json.loads(args.result_json)
+        if not isinstance(result, dict):
+            raise ValueError
+    except (ValueError, json.JSONDecodeError):
+        print(error_json("invalid_result_json"), file=sys.stderr)
+        return 2
+    body = ENVELOPE_PREFIX + "\n" + json.dumps(result, separators=(",", ":"))
+    try:
+        cli_json(args.gmail_cli, args.account, ["reply", args.message_id, "--body", body, "--body-text", body])
+        save_processed(args.state_file, args.message_id)
+        print(json.dumps({"ok": True, "processed_message_id": args.message_id}, separators=(",", ":")))
+        return 0
+    except BridgeError as exc:
+        print(error_json(str(exc)), file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

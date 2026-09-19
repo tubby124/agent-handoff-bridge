@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""Print unprocessed Agent Handoff emails addressed to Hermes."""
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+from agent_handoff_gmail import BridgeError, allowed_sender, cli_json, error_json, load_state, parse_envelope
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--gmail-cli", default=os.environ.get("AGENT_HANDOFF_GMAIL_CLI"), help="Path to an approved Gmail CLI")
+    parser.add_argument("--account", default=os.environ.get("AGENT_HANDOFF_GMAIL_ACCOUNT", "personal"), help="Gmail CLI account name")
+    parser.add_argument("--allowed-from", required=True, action="append", help="Allowed sender address; repeat for more than one")
+    parser.add_argument("--state-file", required=True, type=Path, help="Private processed-message state path")
+    parser.add_argument("--query", default='subject:"[Agent Handoff]" newer_than:30d', help="Narrow Gmail search query")
+    parser.add_argument("--limit", type=int, default=10, help="Maximum candidate messages (1-100)")
+    args = parser.parse_args()
+    if not args.gmail_cli:
+        print(error_json("missing_gmail_cli"), file=sys.stderr)
+        return 2
+    if not 1 <= args.limit <= 100:
+        print(error_json("invalid_limit"), file=sys.stderr)
+        return 2
+
+    allowed = {entry.strip().lower() for entry in args.allowed_from if entry.strip()}
+    if not allowed:
+        print(error_json("missing_allowed_sender"), file=sys.stderr)
+        return 2
+
+    try:
+        processed = load_state(args.state_file)
+        candidates = cli_json(args.gmail_cli, args.account, ["search", args.query, "--limit", str(args.limit)])
+        handoffs = []
+        for candidate in candidates:
+            message_id = candidate.get("id")
+            if not isinstance(message_id, str) or message_id in processed:
+                continue
+            records = cli_json(args.gmail_cli, args.account, ["read", message_id])
+            if len(records) != 1:
+                continue
+            message = records[0]
+            sender = message.get("from")
+            if not isinstance(sender, str) or not allowed_sender(sender, allowed):
+                continue
+            envelope = parse_envelope(message.get("body", ""))
+            if not envelope or envelope["to"].strip().lower() != "hermes":
+                continue
+            handoffs.append({
+                "message_id": message_id,
+                "thread_id": message.get("threadId"),
+                "envelope": envelope,
+            })
+        print(json.dumps({"ok": True, "handoffs": handoffs}, separators=(",", ":")))
+        return 0
+    except BridgeError as exc:
+        print(error_json(str(exc)), file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

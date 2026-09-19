@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Read new structured handoffs for one agent from a shared Slack channel."""
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from agent_handoff import BridgeError, HISTORY_URL, auth_test, decode_envelope, json_error, slack_call, validate_agent_name
+
+
+class JsonArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        raise BridgeError("invalid_arguments", message)
+
+
+def positive_limit(value):
+    try:
+        limit = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("must be an integer")
+    if not 1 <= limit <= 100:
+        raise argparse.ArgumentTypeError("must be between 1 and 100")
+    return limit
+
+
+def main():
+    parser = JsonArgumentParser(description="Read structured handoffs sent to one agent.")
+    parser.add_argument("--channel", required=True, help="Public Slack channel ID")
+    parser.add_argument("--as", dest="recipient", required=True, help="This agent's stable name")
+    parser.add_argument("--since", help="Only return messages newer than this Slack timestamp")
+    parser.add_argument("--limit", type=positive_limit, default=25, help="Slack history limit, 1-100")
+    parser.add_argument(
+        "--allow-user",
+        action="append",
+        default=[],
+        help="Trusted Slack bot user ID; repeat to allow more than one sender",
+    )
+    args = parser.parse_args()
+    validate_agent_name(args.recipient, "recipient")
+
+    token = os.environ.get("SLACK_BOT_TOKEN")
+    if not token:
+        raise BridgeError("missing_token", "SLACK_BOT_TOKEN is not set")
+    own_user_id = auth_test(token)
+    payload = {"channel": args.channel, "limit": args.limit}
+    if args.since:
+        payload["oldest"] = args.since
+    history = slack_call(HISTORY_URL, payload, token)
+    messages = history.get("messages")
+    if not isinstance(messages, list):
+        raise BridgeError("invalid_response", "Slack did not return a message list")
+
+    allowed = set(args.allow_user)
+    output = []
+    for message in reversed(messages):
+        if not isinstance(message, dict):
+            continue
+        sender_user = message.get("user")
+        if not isinstance(sender_user, str) or sender_user == own_user_id:
+            continue
+        envelope = decode_envelope(message.get("text"))
+        if envelope is None or envelope["to"] not in (args.recipient, "broadcast"):
+            continue
+        verified = bool(allowed) and sender_user in allowed
+        if allowed and not verified:
+            continue
+        item = {
+            "ts": message.get("ts", ""),
+            "sender_user": sender_user,
+            "verified": verified,
+            "handoff": envelope,
+        }
+        if "thread_ts" in message:
+            item["thread_ts"] = message["thread_ts"]
+        output.append(item)
+    sys.stdout.write(json.dumps(output, separators=(",", ":")) + "\n")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except BridgeError as error:
+        sys.stderr.write(json_error(error) + "\n")
+        raise SystemExit(2 if error.code == "invalid_arguments" else 1)

@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Send one structured, versioned agent handoff through Slack."""
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from agent_handoff import BridgeError, POST_MESSAGE_URL, encode_envelope, json_error, make_envelope, slack_call
+
+
+class JsonArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        raise BridgeError("invalid_arguments", message)
+
+
+def payload_object(value):
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as error:
+        raise argparse.ArgumentTypeError("payload must be valid JSON: %s" % error.msg)
+    if not isinstance(parsed, dict):
+        raise argparse.ArgumentTypeError("payload must be a JSON object")
+    return parsed
+
+
+def main():
+    parser = JsonArgumentParser(description="Send a structured handoff with this agent's Slack bot.")
+    parser.add_argument("--channel", required=True, help="Public Slack channel ID")
+    parser.add_argument("--from", dest="sender", required=True, help="Stable sender agent name")
+    parser.add_argument("--to", required=True, help="Recipient agent name, or broadcast")
+    parser.add_argument("--kind", required=True, choices=("task", "question", "status", "result", "error"))
+    parser.add_argument("--summary", required=True, help="Human-readable handoff summary")
+    parser.add_argument("--payload-json", type=payload_object, default={}, help="Optional JSON object")
+    parser.add_argument("--correlation-id", help="Optional caller-controlled work ID")
+    args = parser.parse_args()
+
+    token = os.environ.get("SLACK_BOT_TOKEN")
+    if not token:
+        raise BridgeError("missing_token", "SLACK_BOT_TOKEN is not set")
+    envelope = make_envelope(
+        args.sender, args.to, args.kind, args.summary, args.payload_json, args.correlation_id
+    )
+    result = slack_call(POST_MESSAGE_URL, {"channel": args.channel, "text": encode_envelope(envelope)}, token)
+    timestamp = result.get("ts")
+    if not isinstance(timestamp, str):
+        raise BridgeError("invalid_response", "Slack did not return a message timestamp")
+    sys.stdout.write(json.dumps({"id": envelope["id"], "ts": timestamp}, separators=(",", ":")) + "\n")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except BridgeError as error:
+        sys.stderr.write(json_error(error) + "\n")
+        raise SystemExit(2 if error.code == "invalid_arguments" else 1)

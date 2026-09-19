@@ -31,3 +31,9 @@ There is no safe generic shortcut. For hands-off communication, the receiving ag
 The preferred path is to repair the platform's Slack credential delivery and use this package unchanged. If that is not possible, use a different transport only when the receiving platform already supports a reviewed, securely authenticated connector for it. A user-owned relay service is a possible future adapter, but it needs per-agent authentication, sender allow-lists, durable idempotency records, retention rules, and an independent security review. It is not included in this small v1 package.
 
 Do not replace authentication with a public, guessable endpoint or an opaque URL stored in an agent prompt. That merely turns the URL into an exposed credential.
+
+## A personal WhatsApp number is not a shared agent channel
+
+Some agent runtimes offer a "personal number" or "self-chat" WhatsApp mode. That mode connects an agent as a linked device for the owner's existing WhatsApp account, so it is useful for an owner messaging their own agent. It does **not** create a distinct Hermes/Muse-style participant, a separate group member, or an agent-to-agent transport.
+
+Do not pair two agents to the same personal WhatsApp account and call it an inter-agent bridge. They will share one identity, and the platform may not deliver a message from that account back to itself as a new incoming task. Use the verified email fallback until Slack works, or establish separate WhatsApp identities and a narrowly allow-listed bridge chat as described in [`WHATSAPP-TRANSPORT.md`](WHATSAPP-TRANSPORT.md).

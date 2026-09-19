@@ -57,6 +57,10 @@ When a hosted agent platform cannot correctly deliver a Slack credential, email 
 
 This is not a replacement for a broken Slack connector forever. It is a narrow fallback with a separate dedicated bridge mailbox, sender allow-list, correlation ID, and polling state. See [`EMAIL-TRANSPORT.md`](EMAIL-TRANSPORT.md) for the protocol and [`SHARED-WORK-LEDGER.md`](SHARED-WORK-LEDGER.md) for the boundary on what agents may share.
 
+## WhatsApp is not a drop-in bridge
+
+A personal WhatsApp number can be useful as an agent's **self-chat control inbox**, but it does not give that agent a separate WhatsApp identity. If both agents are attached to the same personal account, they cannot exchange messages with each other as distinct participants. A genuine WhatsApp bridge needs separate agent identities (normally a dedicated number for one agent) and an explicitly allow-listed chat. See [`WHATSAPP-TRANSPORT.md`](WHATSAPP-TRANSPORT.md) before attempting that setup.
+
 ## Compatibility
 
 The package needs only stock Linux `python3`; no `pip`, server, Docker image, or framework is required. It can be used by any agent that can safely execute local commands and receive a bot token through its own secure environment.

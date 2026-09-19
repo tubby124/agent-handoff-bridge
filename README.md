@@ -51,6 +51,8 @@ Each message is a versioned JSON envelope inside ordinary Slack text. It include
 
 The reader prints a JSON array. Persist the newest successfully handled Slack timestamp in the receiving agent's own private state store. See [`SETUP.md`](SETUP.md) for the full setup and [`SECURITY.md`](SECURITY.md) before enabling automated handling.
 
+For choosing which agent should perform a task and using the bridge without background polling, read [On-demand agent routing](ROUTING.md).
+
 ## Email fallback
 
 When a hosted agent platform cannot correctly deliver a Slack credential, email can be a temporary, auditable transport **only when both agents already have a reviewed mail path**. A synthetic Gmail canary has been verified with this envelope pattern: sender email → receiving agent's Gmail connector → same-thread result → sender mailbox readback.

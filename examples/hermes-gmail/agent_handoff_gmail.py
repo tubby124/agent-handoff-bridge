@@ -31,7 +31,7 @@ def parse_envelope(body: str) -> dict[str, Any] | None:
         return None
     raw = body[len(ENVELOPE_PREFIX) :].lstrip("\r\n ")
     try:
-        envelope = json.loads(raw)
+        envelope, _ = json.JSONDecoder().raw_decode(raw)
     except json.JSONDecodeError:
         return None
     if not isinstance(envelope, dict):

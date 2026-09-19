@@ -23,11 +23,13 @@ Use a plain-text body beginning with this marker:
 {"version":1,"id":"<UUID>","from":"planner","to":"executor","kind":"task","summary":"Bounded work item","payload":{},"correlation_id":"<WORK_ID>"}
 ```
 
-Use an exact subject prefix such as `[Agent Handoff] <UUID>`. A result replies in the same thread and includes a new envelope with `kind` set to `result`, `error`, or `status`. Do not depend on quoted original text as the result; parse only the reply's own marked envelope.
+Use an exact subject prefix such as `[Agent Handoff] <UUID>`. A result replies in the same thread and includes a new envelope with `kind` set to `result`, `error`, or `status`. Mail clients commonly append quoted original mail after a reply; parse the first JSON object immediately after the reply marker and ignore the quoted tail.
 
 ## Polling and state
 
-Each agent owns a private state record containing at least the last processed message ID, processed envelope IDs, and correlation IDs. Poll at a bounded interval (for example, every five minutes), process oldest-first, and advance state only after successful validation and handling. Do not automatically answer every message; one task should produce at most one acknowledgement and one result.
+Each agent owns a private state record containing at least the last processed message ID, processed envelope IDs, and correlation IDs. Poll at a bounded interval (for example, every five minutes), process oldest-first, and advance state only after successful validation and handling.
+
+Only `kind:"task"` is actionable and may receive one reply. A `result`, `error`, or `status` envelope is an outcome for the original sender to record; it must not receive another automatic reply. This prevents a result from becoming an infinite email loop.
 
 ## Live acceptance check
 

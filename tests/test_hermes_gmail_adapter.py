@@ -20,6 +20,14 @@ def test_rejects_ordinary_or_incomplete_email():
     assert MODULE.parse_envelope('[agent-handoff/email-v1]\n{"id":"a"}') is None
 
 
+def test_accepts_envelope_before_gmail_quoted_reply():
+    body = (
+        '[agent-handoff/email-v1] {"id":"a","from":"muse","to":"hermes",'
+        '"kind":"result","summary":"Synthetic"}\n\nOn yesterday, sender wrote:\n> old mail'
+    )
+    assert MODULE.parse_envelope(body)["kind"] == "result"
+
+
 def test_sender_normalization_requires_exact_address():
     allowed = {"bridge@example.com"}
     assert MODULE.allowed_sender("Bridge <bridge@example.com>", allowed)

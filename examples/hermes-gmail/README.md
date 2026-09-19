@@ -10,6 +10,8 @@ It is intentionally narrow:
 - stores processed source message IDs in a local file with mode `0600`; and
 - replies in the existing Gmail thread, then records the source message as processed.
 
+The poller returns both task and result envelopes addressed to Hermes. The Hermes cron prompt must reply only to `kind:"task"`; it records `result` and `blocked` outcomes without replying. This is required to prevent reply loops.
+
 It does not read a general inbox, create a mailbox, acquire OAuth credentials, or run a scheduler itself.
 
 ## Prerequisites

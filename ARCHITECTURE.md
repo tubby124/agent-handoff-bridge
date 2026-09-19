@@ -32,6 +32,8 @@ After the core contract is stable, adapters can expose the same four operations 
 
 An adapter must use the host platform's credential store and action-approval system. It must not ask users to paste tokens into chat or bypass credential surrogation. A platform must correctly resolve any credential surrogate before a reviewed adapter can be called production-ready.
 
+If a platform cannot pass Slack `auth.test` with its stored credential, it has no safe Slack output path yet. A separate relay is not a drop-in workaround: the receiving agent would still need an approved, authenticated way to poll it. [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md) defines the safe diagnosis and the boundary for future relay work.
+
 ## Public distribution gate
 
 Before publishing a directory connector or hosted service, add:

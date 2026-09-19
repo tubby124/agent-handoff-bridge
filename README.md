@@ -57,6 +57,8 @@ The package needs only stock Linux `python3`; no `pip`, server, Docker image, or
 
 An agent platform's connector or credential-injection behavior is outside this package. The package works when `SLACK_BOT_TOKEN` is correctly injected into the agent runtime. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the public-product boundaries and future connector path.
 
+Before treating an installation as ready, run the connector's smallest authentication check: Slack `auth.test`. If a direct Bot User OAuth Token succeeds but the same stored credential produces `invalid_auth` through an agent platform, the platform is not resolving or injecting the credential correctly. Do not rotate the token repeatedly, widen Slack scopes, or weaken the bridge's security model. See [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md) for the safe diagnosis and fallback decision.
+
 ## Verify locally
 
 ```sh

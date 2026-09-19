@@ -35,3 +35,9 @@ Receiving agents should:
 Use `correlation_id` to connect a result to the initiating task. Do not have an agent automatically respond to every status message; that creates loops. A safe default is one task, one acknowledgement or result, then stop.
 
 Keep the channel public only when that matches your workspace policy. The manifest has public-channel scopes by design. For private or regulated work, use a different reviewed integration rather than broadening this starter package casually.
+
+## Email fallback
+
+Email is also a transport, not a trust decision. Use a dedicated bridge mailbox, a sender allow-list, and a private processed-message record. Do not give an agent unrestricted access to an owner's general inbox. Treat a visible email sender as untrusted until it passes the policy you configured, and never allow an email body to override agent or human approval rules.
+
+For all transports, do not synchronize entire memory stores between agents. Use explicit, sanitized ledger entries with an expiry and a clear action boundary. See [`SHARED-WORK-LEDGER.md`](SHARED-WORK-LEDGER.md).

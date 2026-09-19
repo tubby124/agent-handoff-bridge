@@ -34,6 +34,14 @@ An adapter must use the host platform's credential store and action-approval sys
 
 If a platform cannot pass Slack `auth.test` with its stored credential, it has no safe Slack output path yet. A separate relay is not a drop-in workaround: the receiving agent would still need an approved, authenticated way to poll it. [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md) defines the safe diagnosis and the boundary for future relay work.
 
+## Temporary email fallback
+
+Email is an acceptable temporary transport only where both agents already have an approved mail connector. It preserves the same envelope and correlation model while using a dedicated bridge mailbox and strict sender policy. The transport was proven with a synthetic Gmail canary; its portable setup and rollback criteria are in [`EMAIL-TRANSPORT.md`](EMAIL-TRANSPORT.md).
+
+## Shared context without shared private memory
+
+The bridge carries explicit work items, not unrestricted memory synchronization. A shared work ledger can carry reviewed opportunities, tasks, results, and owner-approved preferences while each agent keeps its private context and credentials separate. [`SHARED-WORK-LEDGER.md`](SHARED-WORK-LEDGER.md) defines its schema and the limited scheduled autonomy policy.
+
 ## Public distribution gate
 
 Before publishing a directory connector or hosted service, add:
